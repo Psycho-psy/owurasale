@@ -1,0 +1,384 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  min-height: 100vh;
+}
+
+.hidden { display: none; }
+
+.header {
+  background: #008080;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: bold;
+  color: #667eea;
+}
+
+.navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: white;
+  padding: 10px;
+}
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 200px;
+  background: #2a344d;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-right: 2px solid #e2e8f0;
+}
+
+.content-area {
+  flex: 1;
+  padding: 20px;
+  background: white;
+}
+
+.nav-btn {
+  font-size: 18px;         /* Bigger text */
+  padding: 12px 20px;      /* More space inside */
+  display: flex;
+  align-items: center;
+  gap: 10px;               /* Space between icon and text */
+  border-radius: 8px;      /* Optional: rounded corners */
+}
+
+.nav-btn i, .nav-btn span.icon {
+  font-size: 22px;
+}
+
+
+.nav-btn.active,
+.nav-btn:hover {
+  background-color: #e0e0e0;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .nav-btn {
+    font-size: 16px;
+    padding: 10px 16px;
+  }
+}
+
+
+.section { display: none; }
+.section.active { display: block; }
+
+.btn {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.btn-primary { background: #667eea; color: white; }
+.btn-danger { background: #f56565; color: white; }
+
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.login-box {
+  background: white;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  width: 100%;
+  max-width: 350px;
+}
+
+.login-box h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #667eea;
+}
+
+.form-group { margin-bottom: 15px; }
+label { font-weight: bold; margin-bottom: 5px; display: block; }
+input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .header { flex-direction: column; gap: 10px; }
+  .navigation { flex-direction: column; }
+  .nav-btn { width: 100%; }
+}
+
+.hidden {
+  display: none;
+}
+
+.modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  width: 400px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.hidden {
+  display: none;
+}
+
+table td, table th {
+  padding: 15px 15px;
+  vertical-align: 5px;
+}
+
+table th:nth-child(1) { width: 120px; } /* Receipt */
+table th:nth-child(3) { width: 150px; } /* Customer */
+table th:nth-child(4) { width: 150px; } /* Items */
+
+table tr {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.action-btns button {
+  margin-right: 5px;
+}
+
+.status-in {
+  color: green;
+  font-weight: bold;
+}
+
+.status-low {
+  color: orange;
+  font-weight: bold;
+}
+
+.status-out {
+  color: red;
+  font-weight: bold;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  padding: 10px;
+}
+
+.sales-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.sales-table th {
+  background: #f4f4f4;
+  text-align: left;
+  padding: 12px;
+  font-weight: bold;
+  color: #333;
+}
+
+.sales-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sales-table tr:hover {
+  background-color: #f9fafb;
+}
+
+.sales-table .action-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.sales-table .btn-sm {
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  border-radius: 5px;
+}
+
+.debtors-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.debtors-table th {
+  background: #f4f4f4;
+  text-align: left;
+  padding: 12px;
+  font-weight: bold;
+  color: #333;
+}
+
+.debtors-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.debtors-table tr:hover {
+  background-color: #f9fafb;
+}
+
+.debtors-table .action-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.debtors-table .btn-sm {
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  border-radius: 5px;
+}
+
+.debtor-badge {
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.badge-paid {
+  background-color: #48bb78;
+  color: white;
+}
+
+.badge-pending {
+  background-color: #f6ad55;
+  color: white;
+}
+
+.badge-overdue {
+  background-color: #f56565;
+  color: white;
+}
+
+.summary-cards {
+  margin-top: 15px;
+  font-size: 1rem;
+  color: #333;
+}
+
+.inventory-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.inventory-table th {
+  background: #f4f4f4;
+  text-align: left;
+  padding: 12px;
+  font-weight: bold;
+  color: #333;
+}
+
+.inventory-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.inventory-table tr:hover {
+  background-color: #f9fafb;
+}
+
+.inventory-table .action-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.inventory-table .btn-sm {
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  border-radius: 5px;
+}
+
+.status-ok {
+  color: green;
+  font-weight: bold;
+}
+
+.status-low {
+  color: orange;
+  font-weight: bold;
+}
+
+.status-out {
+  color: red;
+  font-weight: bold;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.8em;
+    display: inline-block;
+    margin-right: 5px; /* Separate badge from buttons */
+}
+
+.badge-success { /* Available */
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.badge-warning { /* Low Stock */
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.badge-danger { /* Out of Stock */
+    background-color: #f8d7da;
+    color: #721c24;
+}
