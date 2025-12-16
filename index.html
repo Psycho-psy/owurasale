@@ -41,7 +41,7 @@
         <button class="nav-btn" onclick="showSection('debtors', event)">💰 Debtors</button>
         <button class="nav-btn" onclick="showSection('reports', event)">📊 Reports</button>
         <hr>
-        <button class="nav-btn" onclick="clearAllData()">⚠️ Clear All Data</button>
+        <button class="nav-btn" onclick="clearPOSData()">⚠️ Clear All Data</button>
         <button class="nav-btn" onclick="showAddAdminModal()">🔒 Add Admin</button>
       </nav>
 
@@ -96,7 +96,7 @@
             </div>
             <div class="form-group">
               <label>Payment Type</label>
-              <select id="paymentType">
+              <select id="paymentType" onchange="updateCheckoutFields()"> 
                 <option value="cash">Cash</option>
                 <option value="mobile">Mobile Money</option>
                 <option value="card">Card</option>
@@ -104,7 +104,7 @@
               </select>
             </div>
             
-            <div class="form-group" id="cashAmountGroup" style="display: none;">
+            <div class="form-group" id="cashAmountGroup" style="display: block;">
               <label>Cash Amount Received (GH₵)</label>
               <input type="number" id="cashAmount" min="0" placeholder="0.00">
             </div>
@@ -169,8 +169,21 @@
               <p>Active Debtors: <span id="totalDebtors">0</span></p>
               <p>Total Outstanding Debt: GH₵ <span id="totalDebt">0.00</span></p>
             </div>
-            <button class="btn btn-primary" onclick="showAddDebtorModal()">+ Add Existing Debt</button>
+            
+            <div style="display: flex; gap: 10px; align-items: center;">
+                 <input 
+                    type="text" 
+                    id="debtorSearchInput" 
+                    placeholder="Search by Customer Name/Phone..." 
+                    onkeyup="renderDebtors()"
+                    class="form-control"
+                    style="width: 250px;"
+                >
+                <button class="btn btn-primary" onclick="showAddDebtorModal()">+ Add Existing Debt</button>
+            </div>
+            
           </div>
+
           <table class="inventory-table">
             <thead>
               <tr>
