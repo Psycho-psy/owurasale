@@ -48,7 +48,7 @@ let database = {
 };
 let salesChart = null; // For the dashboard chart
 let currentEditingSku = null; // Used for product modal
-
+let currentEditingDebtorId = null; // NEW: Used for debtor modal
 
 // ===================================
 // ===== DATABASE & PERSISTENCE =====
@@ -612,11 +612,59 @@ function filterInventory() {
 }
 
 // ===================================
-// ===== DEBTORS FUNCTIONS (Fully Implemented) =====
+// ===== DEBTORS FUNCTIONS (FULLY IMPLEMENTED) =====
 // ===================================
 
-function showAddDebtorModal() {
+// Renamed for dual purpose (Add or Edit)
+function showDebtorModal(id = null) {
+    currentEditingDebtorId = id;
+
+    const modalTitle = document.getElementById('debtorModalTitle');
+    const saveButton = document.querySelector('#addDebtorModal .btn-primary');
+    const debtor = id ? database.debtors.find(d => d.id === id) : null;
+
+    // Set Title and Button Text
+    modalTitle.textContent = id ? 'Edit Debtor Record' : 'Add Existing Debt';
+    saveButton.textContent = id ? 'Save Changes' : 'Add Debtor';
+
+    // Get Input Fields
+    const nameInput = document.getElementById('debtorCustomerName');
+    const phoneInput = document.getElementById('debtorPhone');
+    const amountInput = document.getElementById('debtorAmount');
+    const originalDateInput = document.getElementById('debtorOriginalDate');
+    const dueDateInput = document.getElementById('debtorDueDate');
+
+    if (debtor) {
+        // Populate fields for editing
+        nameInput.value = debtor.customerName || '';
+        phoneInput.value = debtor.phone || '';
+        // originalAmount is the starting point, not the current amount owed
+        amountInput.value = debtor.originalAmount || 0; 
+        originalDateInput.value = debtor.originalDate || '';
+        dueDateInput.value = debtor.dueDate && debtor.dueDate !== 'N/A' ? debtor.dueDate : '';
+        
+        // Prevent changing initial values during edit for accounting integrity
+        amountInput.readOnly = true;
+        originalDateInput.readOnly = true;
+    } else {
+        // Clear fields for new debt
+        nameInput.value = '';
+        phoneInput.value = '';
+        amountInput.value = '';
+        originalDateInput.value = new Date().toISOString().split('T')[0];
+        dueDateInput.value = '';
+        
+        // Make fields writable for new debt
+        amountInput.readOnly = false;
+        originalDateInput.readOnly = false;
+    }
+
     openModal('addDebtorModal');
+}
+
+// Function called by the table button
+function editDebtor(id) {
+    showDebtorModal(id);
 }
 
 function updateDebtorStatus() {
@@ -658,6 +706,9 @@ function renderDebtors() {
         const name = debtor.customerName ? debtor.customerName.toLowerCase() : '';
         const phone = debtor.phone ? debtor.phone.toLowerCase() : '';
         
+        // Only show paid debtors if search term is active
+        if (debtor.amount <= 0 && !searchTerm) return false;
+        
         return name.includes(searchTerm) || phone.includes(searchTerm);
     });
     
@@ -668,8 +719,6 @@ function renderDebtors() {
     if(totalDebtEl) totalDebtEl.textContent = totalOutstandingDebt.toFixed(2);
     
     filteredDebtors.forEach(d => {
-        if (d.amount <= 0 && d.status === 'Paid' && !searchTerm) return;
-        
         let statusClass = 'badge-pending';
         if (d.status === 'Paid') {
             statusClass = 'badge-success';
@@ -710,7 +759,8 @@ function renderDebtors() {
 }
 
 
-function saveDebtorManually() {
+// Renamed and updated saveDebtorManually() to saveDebtor() to handle both Add and Edit
+function saveDebtor() {
   const name = document.getElementById("debtorCustomerName").value.trim();
   const phone = document.getElementById("debtorPhone").value.trim();
   const amount = parseFloat(document.getElementById("debtorAmount").value);
@@ -718,26 +768,41 @@ function saveDebtorManually() {
   const dueDate = document.getElementById("debtorDueDate").value;
 
   if (!name || isNaN(amount) || amount <= 0 || !originalDate) {
-    alert("Please fill in Customer Name, Amount, and Original Date.");
+    alert("Please fill in Customer Name, Amount, and Original Date with valid data.");
     return;
   }
   
-  const newId = 'D' + (database.debtors.length + 1).toString().padStart(4, '0');
+  if (currentEditingDebtorId) {
+    // EDIT EXISTING DEBTOR
+    const debtor = database.debtors.find(d => d.id === currentEditingDebtorId);
+    if (debtor) {
+        // Only update editable fields: Name, Phone, and Due Date
+        debtor.customerName = name;
+        debtor.phone = phone;
+        debtor.dueDate = dueDate || 'N/A';
+        alert(`Debtor record for ${name} updated successfully.`);
+    }
+  } else {
+    // ADD NEW DEBTOR
+    const newId = 'D' + (database.debtors.length + 1).toString().padStart(4, '0');
 
-  database.debtors.push({
-    id: newId,
-    customerName: name,
-    phone: phone,
-    originalAmount: amount,
-    amount: amount, 
-    originalDate: originalDate,
-    dueDate: dueDate || 'N/A',
-    status: "Pending",
-    payments: [],
-    dateAdded: new Date().toLocaleString()
-  });
+    database.debtors.push({
+      id: newId,
+      customerName: name,
+      phone: phone,
+      originalAmount: amount,
+      amount: amount, 
+      originalDate: originalDate,
+      dueDate: dueDate || 'N/A',
+      status: "Pending",
+      payments: [],
+      dateAdded: new Date().toLocaleString()
+    });
+    alert(`New debtor record for ${name} added successfully.`);
+  }
 
   closeModal('addDebtorModal');
+  currentEditingDebtorId = null; // Reset state
   saveDatabaseToCloud();
 }
 
@@ -793,11 +858,6 @@ function partPaymentPrompt(id) {
   saveDatabaseToCloud();
 }
 
-function editDebtor(id) {
-    alert(`Editing Debtor ID: ${id}. Please implement a dedicated modal for this.`);
-    // A robust implementation would involve opening a modal populated with the debtor's data
-}
-
 function deleteDebtor(id) {
     if (!confirm(`Are you sure you want to delete the debtor record ID: ${id}? This action cannot be undone.`)) return;
 
@@ -809,6 +869,7 @@ function deleteDebtor(id) {
         alert(`Debtor ID: ${id} deleted.`);
     }
 }
+
 
 // ===================================
 // ===== SALES & REPORTS FUNCTIONS (FULLY IMPLEMENTED) =====
