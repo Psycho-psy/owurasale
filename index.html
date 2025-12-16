@@ -179,7 +179,7 @@
                     class="form-control"
                     style="width: 250px;"
                 >
-                <button class="btn btn-primary" onclick="showAddDebtorModal()">+ Add Existing Debt</button>
+                <button class="btn btn-primary" onclick="showDebtorModal()">+ Add Existing Debt</button>
             </div>
             
           </div>
@@ -276,7 +276,7 @@
 
   <div id="addDebtorModal" class="modal hidden">
     <div class="modal-content">
-      <h3>Add Existing Debtor</h3>
+      <h3 id="debtorModalTitle">Add Existing Debtor</h3>
       <div class="form-group">
         <label>Customer Name</label>
         <input type="text" id="debtorCustomerName" placeholder="Enter customer name">
@@ -299,7 +299,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('addDebtorModal')">Cancel</button>
-        <button class="btn btn-primary" onclick="saveDebtorManually()">Add Debtor</button>
+        <button class="btn btn-primary" onclick="saveDebtor()">Add Debtor</button>
       </div>
     </div>
   </div>
