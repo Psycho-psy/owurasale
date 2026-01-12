@@ -643,9 +643,9 @@ function showDebtorModal(id = null) {
         originalDateInput.value = debtor.originalDate || '';
         dueDateInput.value = debtor.dueDate && debtor.dueDate !== 'N/A' ? debtor.dueDate : '';
         
-        // Prevent changing initial values during edit for accounting integrity
-        amountInput.readOnly = true;
-        originalDateInput.readOnly = true;
+        // Make fields writable for editing
+        amountInput.readOnly = false;
+        originalDateInput.readOnly = false;
     } else {
         // Clear fields for new debt
         nameInput.value = '';
@@ -767,8 +767,8 @@ function saveDebtor() {
   const originalDate = document.getElementById("debtorOriginalDate").value;
   const dueDate = document.getElementById("debtorDueDate").value;
 
-  if (!name || isNaN(amount) || amount <= 0 || !originalDate) {
-    alert("Please fill in Customer Name, Amount, and Original Date with valid data.");
+  if (!name || isNaN(amount) || amount < 0 || !originalDate) {
+    alert("Please fill in Customer Name, a valid Amount, and Original Date.");
     return;
   }
   
@@ -776,10 +776,32 @@ function saveDebtor() {
     // EDIT EXISTING DEBTOR
     const debtor = database.debtors.find(d => d.id === currentEditingDebtorId);
     if (debtor) {
-        // Only update editable fields: Name, Phone, and Due Date
+        // Calculate total payments made so far
+        const totalPaid = debtor.payments ? debtor.payments.reduce((sum, p) => sum + p.amount, 0) : 0;
+
         debtor.customerName = name;
         debtor.phone = phone;
+        debtor.originalAmount = amount; // Update the original loan amount
+        debtor.amount = amount - totalPaid; // Recalculate current debt based on new original and past payments
+        debtor.originalDate = originalDate;
         debtor.dueDate = dueDate || 'N/A';
+
+        // Update status based on new amount
+        if (debtor.amount <= 0) {
+            debtor.status = "Paid";
+            debtor.amount = 0; // Ensure it's not negative
+        } else if (totalPaid > 0) {
+            debtor.status = "Partially Paid";
+        } else {
+            debtor.status = "Pending";
+        }
+        
+        // Re-check for overdue status immediately after edit
+        const today = new Date().toISOString().split('T')[0];
+        if (debtor.status !== 'Paid' && debtor.dueDate !== 'N/A' && debtor.dueDate < today) {
+                debtor.status = 'Overdue';
+        }
+
         alert(`Debtor record for ${name} updated successfully.`);
     }
   } else {
