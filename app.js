@@ -138,7 +138,7 @@ function login() {
   );
 
   if (!valid) {
-    alert("Invalid login credentials. Try admin / admin123");
+    alert("Invalid login credentials. Try admin / nanayaa");
     return;
   }
   
@@ -430,28 +430,54 @@ function processCheckout() {
         }
     });
 
-    // 3. Handle Debtors
+    // 3. Handle Debtors (Credit Sales)
     if (isDebt) {
-        const debtId = 'D' + (database.debtors.length + 1).toString().padStart(4, '0');
-        database.debtors.push({
-            id: debtId,
-            customerName: customerName,
-            phone: customerPhone,
-            originalAmount: total,
-            amount: total, 
-            originalDate: now.toISOString().split('T')[0],
-            dueDate: dueDate || 'N/A',
-            status: "Pending",
-            payments: [],
-            dateAdded: now.toLocaleString(),
-            sourceSaleId: receiptId
-        });
-        alert(`Sale successful. Total debt of GH₵ ${total.toFixed(2)} recorded for ${customerName}. Due Date: ${dueDate || 'N/A'}`);
+        let debtor = database.debtors.find(d => d.phone === customerPhone);
+
+        if (debtor) {
+            // Existing debtor → update balance and add transaction
+            debtor.amount += total;
+            debtor.originalAmount += total;
+            debtor.status = "Pending";
+
+            debtor.transactions = debtor.transactions || [];
+            debtor.transactions.push({
+                type: "Credit Sale",
+                amount: total,
+                date: `${newSale.date} ${newSale.time}`,
+                items: cart,
+                sourceSaleId: receiptId
+            });
+
+            alert(`Credit sale recorded for existing debtor ${debtor.customerName}. New balance: GH₵ ${debtor.amount.toFixed(2)}.`);
+        } else {
+            // New debtor → create record
+            const debtId = 'D' + (database.debtors.length + 1).toString().padStart(4, '0');
+            database.debtors.push({
+                id: debtId,
+                customerName: customerName,
+                phone: customerPhone,
+                originalAmount: total,
+                amount: total, 
+                originalDate: now.toISOString().split('T')[0],
+                dueDate: dueDate || 'N/A',
+                status: "Pending",
+                transactions: [{
+                    type: "Credit Sale",
+                    amount: total,
+                    date: `${newSale.date} ${newSale.time}`,
+                    items: cart,
+                    sourceSaleId: receiptId
+                }],
+                dateAdded: now.toLocaleString()
+            });
+            alert(`Sale successful. Total debt of GH₵ ${total.toFixed(2)} recorded for ${customerName}. Due Date: ${dueDate || 'N/A'}`);
+        }
     } else {
         if (change > 0) {
             alert(`Sale successful. Total: GH₵ ${total.toFixed(2)}. Amount received: GH₵ ${amountReceived.toFixed(2)}. Change: GH₵ ${change.toFixed(2)}.`);
         } else {
-             alert(`Sale successful. Total: GH₵ ${total.toFixed(2)}. Payment received.`);
+            alert(`Sale successful. Total: GH₵ ${total.toFixed(2)}. Payment received.`);
         }
     }
     
@@ -466,6 +492,7 @@ function processCheckout() {
     
     // 5. Save and Re-render
     saveDatabaseToCloud(); 
+    renderAll();
 }
 
 
@@ -643,9 +670,9 @@ function showDebtorModal(id = null) {
         originalDateInput.value = debtor.originalDate || '';
         dueDateInput.value = debtor.dueDate && debtor.dueDate !== 'N/A' ? debtor.dueDate : '';
         
-        // Make fields writable for editing
-        amountInput.readOnly = false;
-        originalDateInput.readOnly = false;
+        // Prevent changing initial values during edit for accounting integrity
+        amountInput.readOnly = true;
+        originalDateInput.readOnly = true;
     } else {
         // Clear fields for new debt
         nameInput.value = '';
@@ -696,28 +723,28 @@ function renderDebtors() {
     let totalActiveDebtors = 0;
     let totalOutstandingDebt = 0;
 
-    const filteredDebtors = database.debtors.filter(debtor => {
-        
+    const debtorsList = Array.isArray(database.debtors) ? database.debtors : Object.values(database.debtors);
+
+    const filteredDebtors = debtorsList.filter(debtor => {
         if (debtor.amount > 0) {
             totalActiveDebtors++;
             totalOutstandingDebt += debtor.amount;
         }
-        
+
         const name = debtor.customerName ? debtor.customerName.toLowerCase() : '';
         const phone = debtor.phone ? debtor.phone.toLowerCase() : '';
-        
-        // Only show paid debtors if search term is active
+
         if (debtor.amount <= 0 && !searchTerm) return false;
-        
+
         return name.includes(searchTerm) || phone.includes(searchTerm);
     });
-    
+
     const totalDebtorsEl = document.getElementById('totalDebtors');
-    if(totalDebtorsEl) totalDebtorsEl.textContent = totalActiveDebtors;
-    
+    if (totalDebtorsEl) totalDebtorsEl.textContent = totalActiveDebtors;
+
     const totalDebtEl = document.getElementById('totalDebt');
-    if(totalDebtEl) totalDebtEl.textContent = totalOutstandingDebt.toFixed(2);
-    
+    if (totalDebtEl) totalDebtEl.textContent = totalOutstandingDebt.toFixed(2);
+
     filteredDebtors.forEach(d => {
         let statusClass = 'badge-pending';
         if (d.status === 'Paid') {
@@ -725,11 +752,26 @@ function renderDebtors() {
         } else if (d.status === 'Overdue') {
             statusClass = 'badge-overdue';
         } else if (d.status === 'Partially Paid') {
-             statusClass = 'badge-warning'; 
+            statusClass = 'badge-warning';
         }
 
+        // Build transaction history HTML
+        const historyHtml = d.transactions && d.transactions.length > 0
+            ? d.transactions.map(t => {
+                let itemDetails = "";
+                if (t.items && t.items.length > 0) {
+                    itemDetails = "<br><em>Items: " + t.items.map(i => `${i.name} x${i.quantity}`).join(", ") + "</em>";
+                }
+                return `
+                    <div class="transaction-entry">
+                        <span>${t.date}</span> - <strong>${t.type}</strong>: GH₵ ${t.amount.toFixed(2)}
+                        ${itemDetails}
+                    </div>
+                `;
+            }).join("")
+            : "<em>No transactions recorded</em>";
+
         const row = tableBody.insertRow();
-        
         row.innerHTML = `
             <td>${d.customerName || 'N/A'}</td>
             <td>${d.phone || 'N/A'}</td>
@@ -740,11 +782,12 @@ function renderDebtors() {
             <td><span class="badge ${statusClass}">${d.status}</span></td>
             <td>
                 <div class="action-btns">
-                    <button class="btn btn-secondary btn-sm" onclick="editDebtor('${d.id}')">Edit</button>
-                    <button class="btn btn-success btn-sm" ${d.amount > 0 ? `onclick="recordFullPayment('${d.id}')"` : 'disabled'}>Mark Full Paid</button>
-                    <button class="btn btn-warning btn-sm" ${d.amount > 0 ? `onclick="partPaymentPrompt('${d.id}')"` : 'disabled'}>Part Payment</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteDebtor('${d.id}')">Delete Record</button>
+                    <button class="btn btn-secondary btn-sm" onclick="editDebtor('${d.phone}')">Edit</button>
+                    <button class="btn btn-success btn-sm" ${d.amount > 0 ? `onclick="recordFullPayment('${d.phone}')"` : 'disabled'}>Mark Full Paid</button>
+                    <button class="btn btn-warning btn-sm" ${d.amount > 0 ? `onclick="partPaymentPrompt('${d.phone}')"` : 'disabled'}>Part Payment</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteDebtor('${d.phone}')">Delete Record</button>
                 </div>
+                <div class="transaction-history">${historyHtml}</div>
             </td>
         `;
     });
@@ -753,10 +796,11 @@ function renderDebtors() {
         const row = tableBody.insertRow();
         row.innerHTML = `<td colspan="8" style="text-align: center; color: #999; padding: 20px;">No debtors match your search criteria.</td>`;
     } else if (totalActiveDebtors === 0 && !searchTerm) {
-         const row = tableBody.insertRow();
+        const row = tableBody.insertRow();
         row.innerHTML = `<td colspan="8" style="text-align: center; color: #999; padding: 20px;">No outstanding debts recorded.</td>`;
     }
 }
+
 
 
 // Renamed and updated saveDebtorManually() to saveDebtor() to handle both Add and Edit
@@ -767,60 +811,59 @@ function saveDebtor() {
   const originalDate = document.getElementById("debtorOriginalDate").value;
   const dueDate = document.getElementById("debtorDueDate").value;
 
-  if (!name || isNaN(amount) || amount < 0 || !originalDate) {
-    alert("Please fill in Customer Name, a valid Amount, and Original Date.");
+  if (!name || !phone || isNaN(amount) || amount <= 0 || !originalDate) {
+    alert("Please fill in Customer Name, Phone, Amount, and Original Date with valid data.");
     return;
   }
-  
+
+  // EDIT EXISTING DEBTOR (when modal is opened with an ID)
   if (currentEditingDebtorId) {
-    // EDIT EXISTING DEBTOR
     const debtor = database.debtors.find(d => d.id === currentEditingDebtorId);
     if (debtor) {
-        // Calculate total payments made so far
-        const totalPaid = debtor.payments ? debtor.payments.reduce((sum, p) => sum + p.amount, 0) : 0;
-
-        debtor.customerName = name;
-        debtor.phone = phone;
-        debtor.originalAmount = amount; // Update the original loan amount
-        debtor.amount = amount - totalPaid; // Recalculate current debt based on new original and past payments
-        debtor.originalDate = originalDate;
-        debtor.dueDate = dueDate || 'N/A';
-
-        // Update status based on new amount
-        if (debtor.amount <= 0) {
-            debtor.status = "Paid";
-            debtor.amount = 0; // Ensure it's not negative
-        } else if (totalPaid > 0) {
-            debtor.status = "Partially Paid";
-        } else {
-            debtor.status = "Pending";
-        }
-        
-        // Re-check for overdue status immediately after edit
-        const today = new Date().toISOString().split('T')[0];
-        if (debtor.status !== 'Paid' && debtor.dueDate !== 'N/A' && debtor.dueDate < today) {
-                debtor.status = 'Overdue';
-        }
-
-        alert(`Debtor record for ${name} updated successfully.`);
+      debtor.customerName = name;
+      debtor.phone = phone;
+      debtor.dueDate = dueDate || 'N/A';
+      alert(`Debtor record for ${name} updated successfully.`);
     }
   } else {
-    // ADD NEW DEBTOR
-    const newId = 'D' + (database.debtors.length + 1).toString().padStart(4, '0');
+    // CHECK IF PHONE ALREADY EXISTS
+    const existingDebtor = database.debtors.find(d => d.phone === phone);
 
-    database.debtors.push({
-      id: newId,
-      customerName: name,
-      phone: phone,
-      originalAmount: amount,
-      amount: amount, 
-      originalDate: originalDate,
-      dueDate: dueDate || 'N/A',
-      status: "Pending",
-      payments: [],
-      dateAdded: new Date().toLocaleString()
-    });
-    alert(`New debtor record for ${name} added successfully.`);
+    if (existingDebtor) {
+      // Append new credit transaction directly
+      existingDebtor.originalAmount += amount; // optional: track total credit issued
+      existingDebtor.amount += amount;         // increase outstanding balance
+      existingDebtor.status = "Pending";
+
+      existingDebtor.payments = existingDebtor.payments || [];
+      existingDebtor.payments.push({
+        amount: amount,
+        date: new Date().toLocaleString(),
+        type: "New Credit"
+      });
+
+      alert(`Existing debtor ${existingDebtor.customerName} updated with new credit.`);
+    } else {
+      // ADD NEW DEBTOR
+      const newId = 'D' + (database.debtors.length + 1).toString().padStart(4, '0');
+      database.debtors.push({
+        id: newId,
+        customerName: name,
+        phone: phone,
+        originalAmount: amount,
+        amount: amount,
+        originalDate: originalDate,
+        dueDate: dueDate || 'N/A',
+        status: "Pending",
+        payments: [{
+          amount: amount,
+          date: new Date().toLocaleString(),
+          type: "Credit"
+        }],
+        dateAdded: new Date().toLocaleString()
+      });
+      alert(`New debtor record for ${name} added successfully.`);
+    }
   }
 
   closeModal('addDebtorModal');
@@ -828,28 +871,35 @@ function saveDebtor() {
   saveDatabaseToCloud();
 }
 
-function recordFullPayment(id) {
+function recordFullPayment(phone) {
   if (!confirm("Confirm full payment received?")) return;
 
-  const debtor = database.debtors.find(d => d.id === id);
+  const debtor = database.debtors.find(d => d.phone === phone);
   if (!debtor || debtor.amount <= 0) return;
 
-  debtor.payments = debtor.payments || [];
-  debtor.payments.push({
+  debtor.transactions = debtor.transactions || [];
+  debtor.transactions.push({
+    type: "Full Payment",
     amount: debtor.amount,
-    date: new Date().toLocaleString(),
-    type: "Full Payment"
+    date: new Date().toLocaleString()
   });
 
   debtor.status = "Paid";
   debtor.amount = 0;
 
+  // Update linked sales to show Paid
+  database.sales.forEach(sale => {
+    if (sale.customerPhone === phone && sale.status === "Credit") {
+      sale.status = "Paid";
+    }
+  });
+
   saveDatabaseToCloud();
+  renderAll();
 }
 
-
-function partPaymentPrompt(id) {
-  const debtor = database.debtors.find(d => d.id === id);
+function partPaymentPrompt(phone) {
+  const debtor = database.debtors.find(d => d.phone === phone);
   if (!debtor || debtor.amount <= 0) return;
 
   const payment = parseFloat(prompt(`Enter part payment for ${debtor.customerName} (Amount owed: GH₵ ${debtor.amount.toFixed(2)})`));
@@ -862,11 +912,11 @@ function partPaymentPrompt(id) {
     return;
   }
 
-  debtor.payments = debtor.payments || [];
-  debtor.payments.push({
+  debtor.transactions = debtor.transactions || [];
+  debtor.transactions.push({
+    type: "Part Payment",
     amount: payment,
-    date: new Date().toLocaleString(),
-    type: "Part Payment"
+    date: new Date().toLocaleString()
   });
 
   if (payment >= debtor.amount) {
@@ -877,21 +927,42 @@ function partPaymentPrompt(id) {
     debtor.status = "Partially Paid";
   }
 
+  // Update linked sales to match debtor status
+  database.sales.forEach(sale => {
+    if (sale.customerPhone === phone && sale.status === "Credit") {
+      sale.status = debtor.status;
+    }
+  });
+
   saveDatabaseToCloud();
+  renderAll();
 }
 
-function deleteDebtor(id) {
-    if (!confirm(`Are you sure you want to delete the debtor record ID: ${id}? This action cannot be undone.`)) return;
+function deleteDebtor(phone) {
+    // Confirm deletion with transaction count for transparency
+    const debtor = database.debtors.find(d => d.phone === phone);
+    if (!debtor) {
+        alert(`No debtor found with phone: ${phone}.`);
+        return;
+    }
 
+    const transactionCount = debtor.transactions ? debtor.transactions.length : 0;
+    if (!confirm(`Are you sure you want to delete debtor ${debtor.customerName} (Phone: ${phone})? This will remove ${transactionCount} transaction(s) and cannot be undone.`)) {
+        return;
+    }
+
+    // Perform deletion
     const initialLength = database.debtors.length;
-    database.debtors = database.debtors.filter(d => d.id !== id);
+    database.debtors = database.debtors.filter(d => d.phone !== phone);
 
     if (database.debtors.length < initialLength) {
         saveDatabaseToCloud();
-        alert(`Debtor ID: ${id} deleted.`);
+        alert(`Debtor ${debtor.customerName} (Phone: ${phone}) deleted successfully.`);
+        renderAll(); // Refresh UI immediately
+    } else {
+        alert(`Deletion failed. Debtor with phone: ${phone} not found.`);
     }
 }
-
 
 // ===================================
 // ===== SALES & REPORTS FUNCTIONS (FULLY IMPLEMENTED) =====
@@ -916,7 +987,7 @@ function renderSales() {
         row.innerHTML = `
             <td>${s.id}</td>
             <td>${s.date} ${s.time}</td>
-            <td>${s.customerName || 'N/A'}</td>
+            <td>${s.customerName || 'N/A'} (${s.customerPhone || 'N/A'})</td>
             <td>${itemSummary}</td>
             <td>GH₵ ${s.totalAmount.toFixed(2)}</td>
             <td>${s.paymentType}</td>
@@ -932,7 +1003,7 @@ function viewSaleDetails(id) {
 
     let details = `Receipt #: ${sale.id}\n`;
     details += `Date: ${sale.date} ${sale.time}\n`;
-    details += `Customer: ${sale.customerName}\n`;
+    details += `Customer: ${sale.customerName} (${sale.customerPhone || 'N/A'})\n`;
     details += `------------------------\n`;
     sale.items.forEach(item => {
         details += `${item.name} x ${item.quantity} @ GH₵ ${item.sellingPrice.toFixed(2)} = GH₵ ${(item.sellingPrice * item.quantity).toFixed(2)}\n`;
@@ -945,6 +1016,13 @@ function viewSaleDetails(id) {
     }
     if (sale.status === 'Credit') {
         details += `Due Date: ${sale.dueDate}\n`;
+
+        // Show debtor linkage
+        const debtor = database.debtors.find(d => d.phone === sale.customerPhone);
+        if (debtor) {
+            details += `Outstanding Balance: GH₵ ${debtor.amount.toFixed(2)}\n`;
+            details += `Debtor Status: ${debtor.status}\n`;
+        }
     }
     details += `Profit: GH₵ ${sale.totalProfit.toFixed(2)}`;
 
